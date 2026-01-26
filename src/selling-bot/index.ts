@@ -100,7 +100,8 @@ export async function startAllSellingBots(): Promise<void> {
 
     try {
       const bot = createSellingBot(botConfig.bot_token, botConfig.id);
-      await bot.start({
+      // Start bot non-blocking
+      bot.start({
         onStart: (info) => {
           logger.info({ botId: botConfig.id, username: info.username }, 'Selling bot started');
         },

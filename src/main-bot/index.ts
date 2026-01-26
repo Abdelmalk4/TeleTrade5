@@ -87,6 +87,9 @@ mainBot.catch((err) => {
   logger.error({ err: err.error, ctx: err.ctx.update }, 'Main Bot error');
 });
 
+// Import selling bot manager
+import { startAllSellingBots } from '../selling-bot/index.js';
+
 // =================================
 // Start Bot
 // =================================
@@ -96,11 +99,18 @@ async function startBot() {
     const me = await mainBot.api.getMe();
     logger.info({ username: me.username, id: me.id }, 'Main Bot connected');
 
-    await mainBot.start({
+    // Start Main Bot
+    mainBot.start({
       onStart: (botInfo) => {
         logger.info({ botInfo }, 'Main Bot started polling');
       },
     });
+    
+    // Start Selling Bots Manager (non-blocking)
+    startAllSellingBots().catch(error => {
+      logger.error({ error }, 'Failed to start selling bots');
+    });
+    
   } catch (error) {
     logger.fatal({ error }, 'Failed to start Main Bot');
     process.exit(1);
