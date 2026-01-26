@@ -1,0 +1,119 @@
+/**
+ * Subscription Plans Handler (Supabase version)
+ */
+
+import { Bot, InlineKeyboard } from 'grammy';
+import type { SellingBotContext } from '../../../shared/types/index.js';
+import { supabase } from '../../../database/index.js';
+import { withFooter, formatPlanButton, formatDuration, formatPrice } from '../../../shared/utils/index.js';
+import { sellingBotLogger as logger } from '../../../shared/utils/index.js';
+
+export function setupPlansHandler(bot: Bot<SellingBotContext>) {
+  bot.command('plans', async (ctx) => {
+    await showPlans(ctx);
+  });
+
+  bot.callbackQuery('plans', async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await showPlans(ctx);
+  });
+
+  bot.callbackQuery(/^select_plan:(.+)$/, async (ctx) => {
+    const planId = ctx.match[1];
+    await ctx.answerCallbackQuery();
+    await selectPlan(ctx, planId);
+  });
+}
+
+async function showPlans(ctx: SellingBotContext) {
+  const botConfig = ctx.botConfig!;
+
+  try {
+    const { data: plans } = await supabase
+      .from('subscription_plans')
+      .select('*')
+      .eq('bot_id', botConfig.id)
+      .eq('plan_type', 'CLIENT')
+      .eq('is_active', true)
+      .order('price_amount', { ascending: true });
+
+    if (!plans || plans.length === 0) {
+      await ctx.reply(
+        withFooter('📋 *No Plans Available*\n\nThere are currently no subscription plans available.'),
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
+
+    const keyboard = new InlineKeyboard();
+
+    for (const plan of plans) {
+      const buttonText = formatPlanButton(plan.name, plan.price_amount, plan.price_currency, plan.duration_days);
+      keyboard.text(buttonText, `select_plan:${plan.id}`).row();
+    }
+
+    keyboard.text('« Back', 'start');
+
+    let message = '📋 *Available Subscription Plans*\n\n';
+    
+    for (const plan of plans) {
+      message += `*${plan.name}*\n`;
+      message += `💰 ${formatPrice(plan.price_amount, plan.price_currency)} for ${formatDuration(plan.duration_days)}\n`;
+      if (plan.description) message += `📝 ${plan.description}\n`;
+      message += '\n';
+    }
+
+    message += 'Select a plan to subscribe:';
+
+    await ctx.reply(withFooter(message), {
+      parse_mode: 'Markdown',
+      reply_markup: keyboard,
+    });
+  } catch (error) {
+    logger.error({ error, botId: botConfig.id }, 'Failed to load plans');
+    await ctx.reply('❌ Failed to load plans. Please try again.');
+  }
+}
+
+async function selectPlan(ctx: SellingBotContext, planId: string) {
+  try {
+    const { data: plan } = await supabase
+      .from('subscription_plans')
+      .select('*')
+      .eq('id', planId)
+      .single();
+
+    if (!plan || !plan.is_active) {
+      await ctx.reply('❌ This plan is no longer available.');
+      return;
+    }
+
+    ctx.session.purchase = {
+      step: 'plan_selected',
+      planId: plan.id,
+    };
+
+    const keyboard = new InlineKeyboard()
+      .text('💳 Pay Now', `create_invoice:${plan.id}`)
+      .row()
+      .text('« Back to Plans', 'plans');
+
+    const message = `
+📋 *Plan Selected*
+
+*${plan.name}*
+💰 ${formatPrice(plan.price_amount, plan.price_currency)}
+📅 Duration: ${formatDuration(plan.duration_days)}
+${plan.description ? `📝 ${plan.description}\n` : ''}
+Click "Pay Now" to generate a payment invoice.
+`;
+
+    await ctx.reply(withFooter(message), {
+      parse_mode: 'Markdown',
+      reply_markup: keyboard,
+    });
+  } catch (error) {
+    logger.error({ error, planId }, 'Failed to select plan');
+    await ctx.reply('❌ Failed to process selection. Please try again.');
+  }
+}

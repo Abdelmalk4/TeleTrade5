@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # Main Bot - Control Plane
+  main-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: npm run start:main-bot
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  # Selling Bots - Subscriber Interface
+  selling-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: npm run start:selling-bot
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  # Backend API + Webhook Handler + CRON Jobs
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: npm run start:backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    env_file:
+      - .env
+    restart: unless-stopped
+
+# For local development with Supabase, no need for local database
+# Supabase handles the PostgreSQL database in the cloud
