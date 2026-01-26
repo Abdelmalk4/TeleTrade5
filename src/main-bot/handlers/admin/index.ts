@@ -86,6 +86,12 @@ ${planList}
     `), { parse_mode: 'Markdown', reply_markup: keyboard });
   });
 
+  // Create Platform Plan
+  bot.callbackQuery('admin_create_platform_plan', adminOnly(), async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await ctx.conversation.enter('adminPlanCreationConversation');
+  });
+
   // IPN Settings
   bot.callbackQuery('admin_ipn_settings', adminOnly(), async (ctx) => {
     await ctx.answerCallbackQuery();

@@ -89,8 +89,12 @@ export function setupMyBotsHandler(bot: Bot<MainBotContext>) {
     const keyboard = new Keyboard()
       .requestChat('📢 Select Channel', 1, {
         chat_is_channel: true,
+        user_administrator_rights: {
+          is_anonymous: false,
+          can_manage_chat: true,
+        } as any,
       })
-      .placeholder('Select a channel where your bot is admin')
+      .placeholder('Select a channel where you are admin')
       .oneTime()
       .resized();
 
@@ -99,11 +103,7 @@ export function setupMyBotsHandler(bot: Bot<MainBotContext>) {
 
 Click the button below to select your channel.
 
-*Requirements:*
-✅ Your selling bot must be an admin in the channel
-✅ You must have access to the channel
-
-_Select the channel you want to link._
+*Note:* Only channels where you are an admin will appear in the list.
     `), {
       parse_mode: 'Markdown',
       reply_markup: keyboard,
@@ -121,8 +121,12 @@ _Select the channel you want to link._
       .requestChat('👥 Select Group', 2, {
         chat_is_channel: false,
         chat_is_forum: false,
+        user_administrator_rights: {
+          is_anonymous: false,
+          can_manage_chat: true,
+        } as any,
       })
-      .placeholder('Select a group where your bot is admin')
+      .placeholder('Select a group where you are admin')
       .oneTime()
       .resized();
 
@@ -131,11 +135,7 @@ _Select the channel you want to link._
 
 Click the button below to select your group.
 
-*Requirements:*
-✅ Your selling bot must be an admin in the group
-✅ You must have access to the group
-
-_Select the group you want to link._
+*Note:* Only groups where you are an admin will appear in the list.
     `), {
       parse_mode: 'Markdown',
       reply_markup: keyboard,
@@ -168,7 +168,7 @@ _Select the group you want to link._
       const sellingBot = botData as { bot_token: string } | null;
 
       if (!sellingBot) {
-        await ctx.reply('❌ Bot not found. Please try again.', {
+        await ctx.reply('❌ Bot not found in database. Please try again.', {
           reply_markup: { remove_keyboard: true },
         });
         session.linkingBotId = undefined;
@@ -179,37 +179,34 @@ _Select the group you want to link._
       try {
         const { Bot: GrammyBot } = await import('grammy');
         const tempBot = new GrammyBot(sellingBot.bot_token);
-        const botMember = await tempBot.api.getChatMember(chatId, (await tempBot.api.getMe()).id);
+        const botInfo = await tempBot.api.getMe();
+        
+        try {
+            const botMember = await tempBot.api.getChatMember(chatId, botInfo.id);
+            logger.info({ chatId, botMemberStatus: botMember.status }, 'Bot link check');
 
-        if (!['administrator', 'creator'].includes(botMember.status)) {
-          await ctx.reply(withFooter(`
-❌ *Cannot Link ${linkingType === 'channel' ? 'Channel' : 'Group'}*
+            if (!['administrator', 'creator'].includes(botMember.status)) {
+            throw new Error(`Bot is ${botMember.status}, need administrator`);
+            }
+        } catch (apiError: any) {
+            // If checking fails, it usually means bot is not even in the chat or restricted
+            logger.warn({ error: apiError, chatId }, 'Bot admin check failed');
+            throw new Error('Bot is not a member or cannot be checked');
+        }
+        
+      } catch (verifyError: any) {
+        await ctx.reply(withFooter(`
+❌ *Connection Failed*
 
 Your selling bot is not an admin in "${chatTitle}".
 
-*To fix this:*
-1. Go to "${chatTitle}" settings
-2. Add your selling bot as an admin
-3. Try linking again
-          `), {
-            parse_mode: 'Markdown',
-            reply_markup: { remove_keyboard: true },
-          });
-          session.linkingBotId = undefined;
-          return;
-        }
-      } catch (verifyError) {
-        logger.error({ error: verifyError, chatId }, 'Failed to verify bot admin status');
-        await ctx.reply(withFooter(`
-❌ *Cannot Link ${linkingType === 'channel' ? 'Channel' : 'Group'}*
+*How to fix:*
+1. Open Telegram
+2. Go to "${chatTitle}"
+3. Appoint your bot as Admin
+4. Try linking again
 
-Could not verify bot admin status in "${chatTitle}".
-
-*Possible reasons:*
-• Bot is not a member of the ${linkingType}
-• Bot doesn't have permission to view members
-
-Please add your selling bot as an admin and try again.
+_Error: ${verifyError.message || 'Unknown error'}_
         `), {
           parse_mode: 'Markdown',
           reply_markup: { remove_keyboard: true },
@@ -219,12 +216,14 @@ Please add your selling bot as an admin and try again.
       }
 
       // Update bot with linked channel
-      await (supabase.from('selling_bots') as any)
+      const { error: dbError } = await (supabase.from('selling_bots') as any)
         .update({
           linked_channel_id: chatId,
           linked_channel_username: chatUsername,
         })
         .eq('id', linkingBotId);
+
+      if (dbError) throw dbError;
 
       // Clear session
       session.linkingBotId = undefined;
@@ -247,7 +246,7 @@ Your selling bot will now manage access to this ${linkingType}.
       await showBotDetails(ctx, linkingBotId);
     } catch (error) {
       logger.error({ error, chatId }, 'Failed to link chat');
-      await ctx.reply('❌ Failed to link. Please try again.', {
+      await ctx.reply(`❌ Failed to link: ${error instanceof Error ? error.message : 'Unknown error'}`, {
         reply_markup: { remove_keyboard: true },
       });
       session.linkingBotId = undefined;

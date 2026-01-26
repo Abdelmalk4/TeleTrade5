@@ -26,6 +26,7 @@ import { setupAnalyticsHandler } from './handlers/client/analytics.js';
 import { registrationConversation } from './handlers/client/registration.js';
 import { botCreationConversation } from './handlers/client/bot-creation.js';
 import { planCreationConversation } from './handlers/client/plan-creation.js';
+import { adminPlanCreationConversation } from './handlers/admin/plan-creation.js';
 
 // =================================
 // Bot Initialization
@@ -53,6 +54,7 @@ mainBot.use(conversations());
 mainBot.use(createConversation(registrationConversation));
 mainBot.use(createConversation(botCreationConversation));
 mainBot.use(createConversation(planCreationConversation));
+mainBot.use(createConversation(adminPlanCreationConversation));
 
 // =================================
 // Middleware
