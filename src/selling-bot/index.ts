@@ -5,7 +5,7 @@
 
 import { Bot, session } from 'grammy';
 import { conversations } from '@grammyjs/conversations';
-import { sellingBotLogger as logger } from '../shared/utils/index.js';
+import { sellingBotLogger as logger, decrypt } from '../shared/utils/index.js';
 import type { SellingBotContext, SellingBotSessionData } from '../shared/types/index.js';
 import { supabase, type SellingBot, type Client } from '../database/index.js';
 
@@ -99,7 +99,20 @@ export async function startAllSellingBots(): Promise<void> {
     }
 
     try {
-      const bot = createSellingBot(botConfig.bot_token, botConfig.id);
+      let token = botConfig.bot_token;
+      
+      // Decrypt token if it appears to be encrypted
+      // Format is IV:AuthTag:Content (3 parts separated by colon)
+      if (token && token.includes(':') && token.split(':').length === 3) {
+        try {
+          token = decrypt(token);
+        } catch (e) {
+          logger.error({ err: e, botId: botConfig.id }, 'Failed to decrypt bot token');
+          continue; 
+        }
+      }
+
+      const bot = createSellingBot(token, botConfig.id);
       // Start bot non-blocking
       bot.start({
         onStart: (info) => {
