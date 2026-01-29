@@ -57,7 +57,8 @@ export function registerWebhookRoutes(app: FastifyInstance) {
 
       try {
         // Atomic Processing via RPC
-        const { data: result, error } = await supabase.rpc('process_payment_webhook', {
+        // Use any cast to bypass strict RPC typing since generated types are missing
+        const { data: result, error } = await (supabase.rpc as any)('process_payment_webhook', {
           p_invoice_id: String(payload.invoice_id),
           p_payment_status: payload.payment_status,
           p_actually_paid: payload.actually_paid || 0,
@@ -95,9 +96,15 @@ async function triggerPostPaymentActions(invoiceId: number) {
         .eq('nowpayments_invoice_id', String(invoiceId))
         .single();
     
-    if (!transaction || !transaction.subscribers || !transaction.subscribers.selling_bots) return;
+    // Explicitly check for null transaction or missing relations
+    // Type casting to bypass 'never' inference on complex joins without generated types
+    if (!transaction) return;
 
-    const sub = transaction.subscribers;
+    // Use safe access with optional chaining and manual casting if needed
+    const tx = transaction as any;
+    if (!tx.subscribers || !tx.subscribers.selling_bots) return;
+
+    const sub = tx.subscribers;
     const bot = sub.selling_bots;
 
     // Decrypt Token for use
