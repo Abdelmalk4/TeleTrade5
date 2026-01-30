@@ -5,7 +5,7 @@
 import { InlineKeyboard } from 'grammy';
 import type { MainBotConversation, MainBotContext } from '../../../shared/types/index.js';
 import { supabase, type SubscriptionPlan } from '../../../database/index.js';
-import { mainBotLogger as logger, withFooter } from '../../../shared/utils/index.js';
+import { mainBotLogger as logger, withFooter, escapeHtml } from '../../../shared/utils/index.js';
 
 export async function planCreationConversation(
   conversation: MainBotConversation,
@@ -19,10 +19,10 @@ export async function planCreationConversation(
 
   // Step 1: Plan Name
   await ctx.reply(
-    '📝 *Step 1/4: Plan Name*\n\n' +
+    '📝 <b>Step 1/4: Plan Name</b>\n\n' +
       'Enter a name for this subscription plan:\n\n' +
-      '_Example: "Monthly Premium", "VIP Access"_',
-    { parse_mode: 'Markdown' }
+      '<i>Example: "Monthly Premium", "VIP Access"</i>',
+    { parse_mode: 'HTML' }
   );
 
   const nameCtx = await conversation.waitFor('message:text');
@@ -35,10 +35,10 @@ export async function planCreationConversation(
 
   // Step 2: Price
   await ctx.reply(
-    '💰 *Step 2/4: Price*\n\n' +
+    '💰 <b>Step 2/4: Price</b>\n\n' +
       'Enter the price in USD:\n\n' +
-      '_Example: 9.99, 29, 99.99_',
-    { parse_mode: 'Markdown' }
+      '<i>Example: 9.99, 29, 99.99</i>',
+    { parse_mode: 'HTML' }
   );
 
   const priceCtx = await conversation.waitFor('message:text');
@@ -51,10 +51,10 @@ export async function planCreationConversation(
 
   // Step 3: Duration
   await ctx.reply(
-    '📅 *Step 3/4: Duration*\n\n' +
+    '📅 <b>Step 3/4: Duration</b>\n\n' +
       'Enter the subscription duration in days:\n\n' +
-      '_Example: 30 (monthly), 90 (quarterly), 365 (yearly)_',
-    { parse_mode: 'Markdown' }
+      '<i>Example: 30 (monthly), 90 (quarterly), 365 (yearly)</i>',
+    { parse_mode: 'HTML' }
   );
 
   const durationCtx = await conversation.waitFor('message:text');
@@ -67,10 +67,10 @@ export async function planCreationConversation(
 
   // Step 4: Description (optional)
   await ctx.reply(
-    '📝 *Step 4/4: Description (Optional)*\n\n' +
+    '📝 <b>Step 4/4: Description (Optional)</b>\n\n' +
       'Enter a short description, or send /skip:\n\n' +
-      '_Example: "Access to all premium signals"_',
-    { parse_mode: 'Markdown' }
+      '<i>Example: "Access to all premium signals"</i>',
+    { parse_mode: 'HTML' }
   );
 
   const descCtx = await conversation.waitFor('message:text');
@@ -83,14 +83,14 @@ export async function planCreationConversation(
     .text('❌ Cancel', 'cancel_plan');
 
   await ctx.reply(
-    `📋 *Confirm Plan Creation*\n\n` +
-      `*Name:* ${name}\n` +
-      `*Price:* $${priceAmount} USD\n` +
-      `*Duration:* ${durationDays} days\n` +
-      `*Description:* ${description || 'None'}\n\n` +
+    `📋 <b>Confirm Plan Creation</b>\n\n` +
+      `<b>Name:</b> ${escapeHtml(name)}\n` +
+      `<b>Price:</b> $${priceAmount} USD\n` +
+      `<b>Duration:</b> ${durationDays} days\n` +
+      `<b>Description:</b> ${escapeHtml(description || 'None')}\n\n` +
       `Create this plan?`,
     {
-      parse_mode: 'Markdown',
+      parse_mode: 'HTML',
       reply_markup: keyboard,
     }
   );
@@ -129,11 +129,11 @@ export async function planCreationConversation(
 
     await ctx.reply(
       withFooter(
-        `✅ *Plan Created Successfully!*\n\n` +
-          `*${plan.name}* is now available for subscribers.\n\n` +
+        `✅ <b>Plan Created Successfully!</b>\n\n` +
+          `<b>${escapeHtml(plan.name)}</b> is now available for subscribers.\n\n` +
           `Use "My Bots" → Select bot → "Plans" to manage your plans.`
       ),
-      { parse_mode: 'Markdown' }
+      { parse_mode: 'HTML' }
     );
 
     logger.info({ planId: plan.id, botId, name }, 'Subscription plan created');

@@ -5,7 +5,7 @@
 import { Bot, InlineKeyboard } from 'grammy';
 import type { MainBotContext } from '../../../shared/types/index.js';
 import { supabase, type Client } from '../../../database/index.js';
-import { withFooter } from '../../../shared/utils/index.js';
+import { withFooter, escapeHtml } from '../../../shared/utils/index.js';
 import { mainBotLogger as logger } from '../../../shared/utils/index.js';
 import { clientOnly } from '../../middleware/client.js';
 
@@ -25,14 +25,14 @@ export function setupSettingsHandler(bot: Bot<MainBotContext>) {
     await ctx.answerCallbackQuery();
     (ctx.session as any).editingField = 'business_name';
     await ctx.reply(withFooter(`
-✏️ *Edit Business Name*
+✏️ <b>Edit Business Name</b>
 
 Send your new business name:
 
-_Current: ${ctx.client?.businessName}_
+<i>Current: ${escapeHtml(ctx.client?.businessName || '')}</i>
 
 Or send /cancel to go back.
-    `), { parse_mode: 'Markdown' });
+    `), { parse_mode: 'HTML' });
   });
 
   // Edit Email - prompt
@@ -40,12 +40,12 @@ Or send /cancel to go back.
     await ctx.answerCallbackQuery();
     (ctx.session as any).editingField = 'email';
     await ctx.reply(withFooter(`
-📧 *Edit Contact Email*
+📧 <b>Edit Contact Email</b>
 
 Send your new email address:
 
 Or send /cancel to go back.
-    `), { parse_mode: 'Markdown' });
+    `), { parse_mode: 'HTML' });
   });
 
   // Notification settings
@@ -58,16 +58,16 @@ Or send /cancel to go back.
       .text('« Back to Settings', 'settings');
 
     await ctx.reply(withFooter(`
-🔔 *Notification Settings*
+🔔 <b>Notification Settings</b>
 
 Configure when you receive notifications:
 
-• *New Subscribers* - When someone subscribes
-• *Payments* - When payments are confirmed
-• *Expirations* - When subscriptions expire
+• <b>New Subscribers</b> - When someone subscribes
+• <b>Payments</b> - When payments are confirmed
+• <b>Expirations</b> - When subscriptions expire
 
-_Feature coming soon!_
-    `), { parse_mode: 'Markdown', reply_markup: keyboard });
+<i>Feature coming soon!</i>
+    `), { parse_mode: 'HTML', reply_markup: keyboard });
   });
 
   // Handle text input for editing fields
@@ -100,7 +100,7 @@ _Feature coming soon!_
           .eq('id', ctx.client.id);
 
         session.editingField = undefined;
-        await ctx.reply(`✅ Business name updated to: *${text}*`, { parse_mode: 'Markdown' });
+        await ctx.reply(`✅ Business name updated to: <b>${escapeHtml(text)}</b>`, { parse_mode: 'HTML' });
         
         // Refresh client data in context
         ctx.client.businessName = text;
@@ -117,7 +117,7 @@ _Feature coming soon!_
           .eq('id', ctx.client.id);
 
         session.editingField = undefined;
-        await ctx.reply(`✅ Email updated to: *${text}*`, { parse_mode: 'Markdown' });
+        await ctx.reply(`✅ Email updated to: <b>${escapeHtml(text)}</b>`, { parse_mode: 'HTML' });
         await showSettings(ctx);
       }
     } catch (error) {
@@ -150,16 +150,16 @@ async function showSettings(ctx: MainBotContext) {
     .text('« Back', 'start');
 
   await ctx.reply(withFooter(`
-⚙️ *Account Settings*
+⚙️ <b>Account Settings</b>
 
-*Business Name:* ${freshClient?.business_name || client.businessName}
-*Email:* ${freshClient?.contact_email || 'Not set'}
-*Username:* ${freshClient?.username ? `@${freshClient.username}` : 'Not set'}
-*Status:* ${freshClient?.status || client.status}
+<b>Business Name:</b> ${escapeHtml(freshClient?.business_name || client.businessName)}
+<b>Email:</b> ${escapeHtml(freshClient?.contact_email || 'Not set')}
+<b>Username:</b> ${freshClient?.username ? `@${escapeHtml(freshClient.username)}` : 'Not set'}
+<b>Status:</b> ${freshClient?.status || client.status}
 
 Select an option to edit:
   `), {
-    parse_mode: 'Markdown',
+    parse_mode: 'HTML',
     reply_markup: keyboard,
   });
 }

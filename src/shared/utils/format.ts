@@ -51,11 +51,11 @@ export function formatPlanButton(name: string, price: number, currency: string, 
 }
 
 /**
- * Add platform footer to message with clickable link
+ * Add platform footer to message with clickable link (HTML)
  */
 export function withFooter(message: string): string {
   // Create clickable footer that links to the platform
-  return `${message}\n\n_Powered by_ [${config.PLATFORM_NAME}](https://t.me/${getMainBotUsername()})`;
+  return `${message}\n\n<i>Powered by</i> <a href="https://t.me/${getMainBotUsername()}">${config.PLATFORM_NAME}</a>`;
 }
 
 /**
@@ -67,10 +67,22 @@ export function truncate(text: string, maxLength: number): string {
 }
 
 /**
- * Escape markdown characters
+ * Escape markdown characters (Deprecated - prefer HTML)
  */
 export function escapeMarkdown(text: string): string {
   return text.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+}
+
+/**
+ * Escape HTML special characters
+ */
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 /**

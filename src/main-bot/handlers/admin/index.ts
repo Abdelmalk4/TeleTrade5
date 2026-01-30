@@ -5,7 +5,7 @@
 import { Bot, InlineKeyboard } from 'grammy';
 import type { MainBotContext } from '../../../shared/types/index.js';
 import { supabase, type Client, type SellingBot, type SubscriptionPlan, type Subscriber, type PaymentTransaction } from '../../../database/index.js';
-import { mainBotLogger as logger, withFooter, formatDate } from '../../../shared/utils/index.js';
+import { mainBotLogger as logger, withFooter, formatDate, escapeHtml } from '../../../shared/utils/index.js';
 import { config } from '../../../shared/config/index.js';
 import { adminOnly } from '../../middleware/admin.js';
 
@@ -39,13 +39,13 @@ export function setupAdminHandlers(bot: Bot<MainBotContext>) {
       .text('« Back', 'start');
 
     await ctx.reply(withFooter(`
-⚙️ *Platform Settings*
+⚙️ <b>Platform Settings</b>
 
 Configure your TeleTrade platform.
 
-• *Platform Plans* - Manage subscription plans for clients
-• *IPN Settings* - NOWPayments webhook configuration
-    `), { parse_mode: 'Markdown', reply_markup: keyboard });
+• <b>Platform Plans</b> - Manage subscription plans for clients
+• <b>IPN Settings</b> - NOWPayments webhook configuration
+    `), { parse_mode: 'HTML', reply_markup: keyboard });
   });
 
   // Manage Platform Plans
@@ -74,16 +74,16 @@ Configure your TeleTrade platform.
     keyboard.text('« Back to Settings', 'admin_settings');
 
     const planList = plans && plans.length > 0
-      ? plans.map(p => `• *${p.name}* - $${p.price_amount} / ${p.duration_days} days ${p.is_active ? '✅' : '❌'}`).join('\n')
-      : '_No platform plans created yet._';
+      ? plans.map(p => `• <b>${escapeHtml(p.name)}</b> - $${p.price_amount} / ${p.duration_days} days ${p.is_active ? '✅' : '❌'}`).join('\n')
+      : '<i>No platform plans created yet.</i>';
 
     await ctx.reply(withFooter(`
-📋 *Platform Subscription Plans*
+📋 <b>Platform Subscription Plans</b>
 
 These plans are offered to clients for platform access.
 
 ${planList}
-    `), { parse_mode: 'Markdown', reply_markup: keyboard });
+    `), { parse_mode: 'HTML', reply_markup: keyboard });
   });
 
   // Create Platform Plan
@@ -105,33 +105,33 @@ ${planList}
     const ipnSecret = config.NOWPAYMENTS_IPN_SECRET ? '✅ Configured' : '❌ Not set';
 
     await ctx.reply(withFooter(`
-🔔 *IPN Settings*
+🔔 <b>IPN Settings</b>
 
 Configure NOWPayments webhook notifications.
 
-*IPN Callback URL:*
-\`${ipnUrl}\`
+<b>IPN Callback URL:</b>
+<code>${ipnUrl}</code>
 
-*IPN Secret:* ${ipnSecret}
+<b>IPN Secret:</b> ${ipnSecret}
 
-*Setup Instructions:*
+<b>Setup Instructions:</b>
 1. Go to NOWPayments dashboard
 2. Navigate to Settings → IPN
 3. Set the callback URL above
 4. Copy the IPN secret to your .env file
-    `), { parse_mode: 'Markdown', reply_markup: keyboard });
+    `), { parse_mode: 'HTML', reply_markup: keyboard });
   });
 
   // Admin search client
   bot.callbackQuery('admin_search', adminOnly(), async (ctx) => {
     await ctx.answerCallbackQuery();
     await ctx.reply(withFooter(`
-🔍 *Search Client*
+🔍 <b>Search Client</b>
 
 Send the client's username or business name to search.
 
-_Example: @username or "Premium Signals"_
-    `), { parse_mode: 'Markdown' });
+<i>Example: @username or "Premium Signals"</i>
+    `), { parse_mode: 'HTML' });
   });
 
   // Approve client
@@ -187,9 +187,9 @@ async function showClientsList(ctx: MainBotContext) {
   keyboard.text('« Back to Dashboard', 'start');
 
   await ctx.reply(
-    withFooter('👥 *All Clients*\n\nSelect a client to view details:'),
+    withFooter('👥 <b>All Clients</b>\n\nSelect a client to view details:'),
     {
-      parse_mode: 'Markdown',
+      parse_mode: 'HTML',
       reply_markup: keyboard,
     }
   );
@@ -225,9 +225,9 @@ async function showPendingApprovals(ctx: MainBotContext) {
   keyboard.text('« Back', 'start');
 
   await ctx.reply(
-    withFooter(`📋 *Pending Approvals (${pending.length})*\n\nReview and approve new clients:`),
+    withFooter(`📋 <b>Pending Approvals (${pending.length})</b>\n\nReview and approve new clients:`),
     {
-      parse_mode: 'Markdown',
+      parse_mode: 'HTML',
       reply_markup: keyboard,
     }
   );
@@ -273,27 +273,27 @@ async function showPlatformStats(ctx: MainBotContext) {
     .text('« Back', 'start');
 
   const message = `
-📈 *Platform Statistics*
+📈 <b>Platform Statistics</b>
 
-*Clients:*
+<b>Clients:</b>
 • Total: ${totalClients || 0}
 • Active: ${activeClients || 0}
 • Trial: ${trialClients || 0}
 • Pending: ${pendingClients || 0}
 
-*Selling Bots:*
+<b>Selling Bots:</b>
 • Total: ${totalBots || 0}
 • Active: ${activeBots || 0}
 
-*Subscribers:*
+<b>Subscribers:</b>
 • Total: ${totalSubscribers || 0}
 • Active: ${activeSubscribers || 0}
 
-*Today's Payments:* ${todayPayments || 0}
+<b>Today's Payments:</b> ${todayPayments || 0}
 `;
 
   await ctx.reply(withFooter(message), {
-    parse_mode: 'Markdown',
+    parse_mode: 'HTML',
     reply_markup: keyboard,
   });
 }
@@ -323,29 +323,29 @@ async function showClientDetails(ctx: MainBotContext, clientId: string) {
   keyboard.row().text('« Back to Clients', 'admin_clients');
 
   const botsInfo = client.selling_bots && client.selling_bots.length > 0
-    ? client.selling_bots.map((b) => `  • @${b.bot_username} (${b.status})`).join('\n')
+    ? client.selling_bots.map((b) => `  • @${escapeHtml(b.bot_username || 'Unknown')} (${b.status})`).join('\n')
     : '  None';
 
   const message = `
-👤 *Client Details*
+👤 <b>Client Details</b>
 
-*Business:* ${client.business_name}
-*Status:* ${getStatusEmoji(client.status)} ${client.status}
-*Channel:* @${client.channel_username || 'Not set'}
-*Email:* ${client.contact_email || 'Not provided'}
-*Registered:* ${formatDate(new Date(client.created_at))}
+<b>Business:</b> ${escapeHtml(client.business_name)}
+<b>Status:</b> ${getStatusEmoji(client.status)} ${client.status}
+<b>Channel:</b> @${escapeHtml(client.channel_username || 'Not set')}
+<b>Email:</b> ${escapeHtml(client.contact_email || 'Not provided')}
+<b>Registered:</b> ${formatDate(new Date(client.created_at))}
 
-*Trial:*
+<b>Trial:</b>
 ${client.trial_activated
     ? `Started: ${formatDate(new Date(client.trial_start_date!))}\nEnds: ${formatDate(new Date(client.trial_end_date!))}`
     : 'Not started'}
 
-*Selling Bots (${client.selling_bots?.length || 0}):*
+<b>Selling Bots (${client.selling_bots?.length || 0}):</b>
 ${botsInfo}
 `;
 
   await ctx.reply(withFooter(message), {
-    parse_mode: 'Markdown',
+    parse_mode: 'HTML',
     reply_markup: keyboard,
   });
 }
@@ -371,11 +371,11 @@ async function approveClient(ctx: MainBotContext, clientId: string) {
     await mainBot.api.sendMessage(
       Number(client.telegram_user_id),
       withFooter(`
-🎉 *Account Approved!*
+🎉 <b>Account Approved!</b>
 
 Your account has been approved and is ready to use.
 
-*Next steps:*
+<b>Next steps:</b>
 1. Create your first Selling Bot
 2. Configure subscription plans
 3. Link your Telegram channel
@@ -383,7 +383,7 @@ Your account has been approved and is ready to use.
 
 Use /start to begin.
 `),
-      { parse_mode: 'Markdown' }
+      { parse_mode: 'HTML' }
     );
 
     await ctx.reply(`✅ Client "${client.business_name}" approved and notified.`);
@@ -413,9 +413,9 @@ async function showSuspendConfirm(ctx: MainBotContext, clientId: string) {
     .text('❌ Cancel', `view_client:${clientId}`);
 
   await ctx.reply(
-    `⚠️ *Suspend Client*\n\nAre you sure you want to suspend "${client.business_name}"?\n\nThis will pause all their selling bots.`,
+    `⚠️ <b>Suspend Client</b>\n\nAre you sure you want to suspend "<b>${escapeHtml(client.business_name)}</b>"?\n\nThis will pause all their selling bots.`,
     {
-      parse_mode: 'Markdown',
+      parse_mode: 'HTML',
       reply_markup: keyboard,
     }
   );

@@ -6,7 +6,7 @@
 import { InlineKeyboard, Bot } from 'grammy';
 import type { MainBotConversation, MainBotContext } from '../../../shared/types/index.js';
 import { supabase, type SellingBot } from '../../../database/index.js';
-import { mainBotLogger as logger, addDays, withFooter, encrypt } from '../../../shared/utils/index.js';
+import { mainBotLogger as logger, addDays, withFooter, encrypt, escapeHtml } from '../../../shared/utils/index.js';
 import { PLATFORM } from '../../../shared/config/index.js';
 
 export async function botCreationConversation(
@@ -21,14 +21,14 @@ export async function botCreationConversation(
 
   // Step 1: Get Bot Token
   await ctx.reply(
-    '🤖 *Step 1/4: Bot Token*\n\n' +
+    '🤖 <b>Step 1/4: Bot Token</b>\n\n' +
     'First, create a new bot using @BotFather:\n\n' +
     '1. Open @BotFather\n' +
     '2. Send /newbot\n' +
     '3. Follow the instructions\n' +
     '4. Copy the API token and paste it here\n\n' +
-    '_The token looks like: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz_',
-    { parse_mode: 'Markdown' }
+    '<i>The token looks like: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz</i>',
+    { parse_mode: 'HTML' }
   );
 
   const tokenCtx = await conversation.waitFor('message:text');
@@ -68,14 +68,14 @@ export async function botCreationConversation(
 
   // Step 2: NOWPayments API Key
   await ctx.reply(
-    '💳 *Step 2/4: NOWPayments API Key*\n\n' +
+    '💳 <b>Step 2/4: NOWPayments API Key</b>\n\n' +
     'Enter your NOWPayments API key:\n\n' +
     '1. Go to nowpayments.io\n' +
     '2. Create an account or log in\n' +
     '3. Navigate to API Keys\n' +
     '4. Create a new API key\n' +
     '5. Paste it here',
-    { parse_mode: 'Markdown' }
+    { parse_mode: 'HTML' }
   );
 
   const apiKeyCtx = await conversation.waitFor('message:text');
@@ -88,10 +88,10 @@ export async function botCreationConversation(
 
   // Step 3: Wallet Address
   await ctx.reply(
-    '💰 *Step 3/4: Crypto Wallet Address*\n\n' +
+    '💰 <b>Step 3/4: Crypto Wallet Address</b>\n\n' +
     'Enter your crypto wallet address where payments will be sent:\n\n' +
-    '_This is your NOWPayments payout wallet._',
-    { parse_mode: 'Markdown' }
+    '<i>This is your NOWPayments payout wallet.</i>',
+    { parse_mode: 'HTML' }
   );
 
   const walletCtx = await conversation.waitFor('message:text');
@@ -125,13 +125,13 @@ export async function botCreationConversation(
     .text('❌ Cancel', 'cancel_bot_creation');
 
   await ctx.reply(
-    '📋 *Step 4/4: Confirm Bot Creation*\n\n' +
-    `*Bot:* @${botUsername}\n` +
-    `*Name:* ${botName}\n` +
-    `*Wallet:* ${cryptoWalletAddress.slice(0, 10)}...${cryptoWalletAddress.slice(-6)}\n\n` +
+    '📋 <b>Step 4/4: Confirm Bot Creation</b>\n\n' +
+    `<b>Bot:</b> @${escapeHtml(botUsername)}\n` +
+    `<b>Name:</b> ${escapeHtml(botName)}\n` +
+    `<b>Wallet:</b> ${cryptoWalletAddress.slice(0, 10)}...${cryptoWalletAddress.slice(-6)}\n\n` +
     'Create this Selling Bot?',
     {
-      parse_mode: 'Markdown',
+      parse_mode: 'HTML',
       reply_markup: keyboard,
     }
   );
@@ -185,28 +185,28 @@ export async function botCreationConversation(
 
       await ctx.reply(
         withFooter(
-          '🎉 *Selling Bot Created!*\n\n' +
-          `Your bot @${botUsername} is now active!\n\n` +
-          `🆓 *Your ${PLATFORM.TRIAL_DAYS}-day free trial has started!*\n\n` +
-          '*Next steps:*\n' +
+          '🎉 <b>Selling Bot Created!</b>\n\n' +
+          `Your bot @${escapeHtml(botUsername)} is now active!\n\n` +
+          `🆓 <b>Your ${PLATFORM.TRIAL_DAYS}-day free trial has started!</b>\n\n` +
+          '<b>Next steps:</b>\n' +
           '1. Add your bot as admin to your channel\n' +
           '2. Create subscription plans\n' +
           '3. Share your bot link with subscribers\n\n' +
           'Use /mybots to manage your bots.'
         ),
-        { parse_mode: 'Markdown' }
+        { parse_mode: 'HTML' }
       );
     } else {
       await ctx.reply(
         withFooter(
-          '🎉 *Selling Bot Created!*\n\n' +
-          `Your bot @${botUsername} is now active!\n\n` +
-          '*Next steps:*\n' +
+          '🎉 <b>Selling Bot Created!</b>\n\n' +
+          `Your bot @${escapeHtml(botUsername)} is now active!\n\n` +
+          '<b>Next steps:</b>\n' +
           '1. Add your bot as admin to your channel\n' +
           '2. Create subscription plans\n' +
           '3. Share your bot link'
         ),
-        { parse_mode: 'Markdown' }
+        { parse_mode: 'HTML' }
       );
     }
 

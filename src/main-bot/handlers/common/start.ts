@@ -6,7 +6,7 @@
 import { Bot, InlineKeyboard } from 'grammy';
 import type { MainBotContext } from '../../../shared/types/index.js';
 import { PLATFORM } from '../../../shared/config/index.js';
-import { withFooter, formatDate, daysUntil } from '../../../shared/utils/index.js';
+import { withFooter, formatDate, daysUntil, escapeHtml } from '../../../shared/utils/index.js';
 
 export function setupStartCommand(bot: Bot<MainBotContext>) {
   bot.command('start', async (ctx) => {
@@ -52,11 +52,11 @@ export function setupStartCommand(bot: Bot<MainBotContext>) {
       .text('« Back', 'start');
 
     await ctx.reply(withFooter(`
-📖 *About ${PLATFORM.NAME}*
+📖 <b>About ${PLATFORM.NAME}</b>
 
 We help Telegram channel owners monetize their content with automatic subscription management.
 
-*Features:*
+<b>Features:</b>
 • Create white-label subscription bots
 • Accept crypto payments via NOWPayments
 • Automatic channel access control
@@ -64,7 +64,7 @@ We help Telegram channel owners monetize their content with automatic subscripti
 • 7-day free trial
 
 Ready to start? Click "Register Now" below!
-    `), { parse_mode: 'Markdown', reply_markup: keyboard });
+    `), { parse_mode: 'HTML', reply_markup: keyboard });
   });
 }
 
@@ -75,11 +75,11 @@ async function showWelcome(ctx: MainBotContext, firstName: string) {
     .text('📖 Learn More', 'learn_more');
 
   const message = `
-👋 *Welcome to ${PLATFORM.NAME}, ${firstName}!*
+👋 <b>Welcome to ${PLATFORM.NAME}, ${escapeHtml(firstName)}!</b>
 
 Automate your Telegram channel subscriptions with crypto payments.
 
-✨ *What you get:*
+✨ <b>What you get:</b>
 • Automated subscriber management
 • Crypto payments via NOWPayments
 • White-label selling bots
@@ -90,7 +90,7 @@ Ready to get started?
 `;
 
   await ctx.reply(withFooter(message), {
-    parse_mode: 'Markdown',
+    parse_mode: 'HTML',
     reply_markup: keyboard,
   });
 }
@@ -102,13 +102,13 @@ async function showClientDashboard(ctx: MainBotContext, firstName: string) {
   // Status-specific actions
   if (client.status === 'PENDING') {
     const message = `
-👋 *Welcome back, ${firstName}!*
+👋 <b>Welcome back, ${escapeHtml(firstName)}!</b>
 
-📋 *Account Status:* ⏳ Pending Approval
+📋 <b>Account Status:</b> ⏳ Pending Approval
 
 Your registration is being reviewed. You'll receive a notification once approved.
 `;
-    await ctx.reply(withFooter(message), { parse_mode: 'Markdown' });
+    await ctx.reply(withFooter(message), { parse_mode: 'HTML' });
     return;
   }
 
@@ -126,28 +126,28 @@ Your registration is being reviewed. You'll receive a notification once approved
   let statusLine = '';
   if (client.status === 'TRIAL') {
     const daysLeft = client.trialEndDate ? daysUntil(client.trialEndDate) : 0;
-    statusLine = `📋 *Status:* 🆓 Trial (${daysLeft} days left)`;
+    statusLine = `📋 <b>Status:</b> 🆓 Trial (${daysLeft} days left)`;
   } else if (client.status === 'ACTIVE') {
     const renewalDate = client.platformSubscriptionEnd
       ? formatDate(client.platformSubscriptionEnd)
       : 'N/A';
-    statusLine = `📋 *Status:* ✅ Active (renews ${renewalDate})`;
+    statusLine = `📋 <b>Status:</b> ✅ Active (renews ${renewalDate})`;
   } else if (client.status === 'EXPIRED') {
-    statusLine = `📋 *Status:* ⚠️ Expired`;
+    statusLine = `📋 <b>Status:</b> ⚠️ Expired`;
     keyboard.row().text('🔄 Renew Now', 'renew');
   }
 
   const message = `
-👋 *Welcome back, ${firstName}!*
+👋 <b>Welcome back, ${escapeHtml(firstName)}!</b>
 
-🏢 *Business:* ${client.businessName}
+🏢 <b>Business:</b> ${escapeHtml(client.businessName)}
 ${statusLine}
 
 What would you like to do?
 `;
 
   await ctx.reply(withFooter(message), {
-    parse_mode: 'Markdown',
+    parse_mode: 'HTML',
     reply_markup: keyboard,
   });
 }
@@ -163,15 +163,15 @@ async function showAdminDashboard(ctx: MainBotContext, firstName: string) {
     .text('🔍 Search Client', 'admin_search');
 
   const message = `
-🔐 *Admin Dashboard*
+🔐 <b>Admin Dashboard</b>
 
-Welcome back, ${firstName}!
+Welcome back, ${escapeHtml(firstName)}!
 
 You have admin access to the ${PLATFORM.NAME} platform.
 `;
 
   await ctx.reply(withFooter(message), {
-    parse_mode: 'Markdown',
+    parse_mode: 'HTML',
     reply_markup: keyboard,
   });
 }

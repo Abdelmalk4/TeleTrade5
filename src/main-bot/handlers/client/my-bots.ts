@@ -5,7 +5,7 @@
 import { Bot, InlineKeyboard, Keyboard } from 'grammy';
 import type { MainBotContext } from '../../../shared/types/index.js';
 import { supabase, type SellingBot, type Subscriber, type SubscriptionPlan } from '../../../database/index.js';
-import { withFooter, formatDate, formatPrice, formatDuration, decrypt, escapeMarkdown } from '../../../shared/utils/index.js';
+import { withFooter, formatDate, formatPrice, formatDuration, decrypt, escapeMarkdown, escapeHtml } from '../../../shared/utils/index.js';
 import { mainBotLogger as logger } from '../../../shared/utils/index.js';
 import { clientOnly } from '../../middleware/client.js';
 
@@ -99,13 +99,13 @@ export function setupMyBotsHandler(bot: Bot<MainBotContext>) {
       .resized();
 
     await ctx.reply(withFooter(`
-📢 *Link Channel*
+📢 <b>Link Channel</b>
 
 Click the button below to select your channel.
 
-*Note:* Only channels where you are an admin will appear in the list.
+<i>Note:</i> Only channels where you are an admin will appear in the list.
     `), {
-      parse_mode: 'Markdown',
+      parse_mode: 'HTML',
       reply_markup: keyboard,
     });
   });
@@ -131,13 +131,13 @@ Click the button below to select your channel.
       .resized();
 
     await ctx.reply(withFooter(`
-👥 *Link Group*
+👥 <b>Link Group</b>
 
 Click the button below to select your group.
 
-*Note:* Only groups where you are an admin will appear in the list.
+<i>Note:</i> Only groups where you are an admin will appear in the list.
     `), {
-      parse_mode: 'Markdown',
+      parse_mode: 'HTML',
       reply_markup: keyboard,
     });
   });
@@ -205,19 +205,19 @@ Click the button below to select your group.
         
       } catch (verifyError: any) {
         await ctx.reply(withFooter(`
-❌ *Connection Failed*
+❌ <b>Connection Failed</b>
 
 Your selling bot is not an admin in the chat.
 
-*How to fix:*
+<b>How to fix:</b>
 1. Open Telegram
 2. Go to the ${linkingType} settings
 3. Appoint your bot as Admin
 4. Try linking again
 
-_Error: ${verifyError.message || 'Unknown error'}_
+<i>Error: ${escapeHtml(verifyError.message || 'Unknown error')}</i>
         `), {
-          parse_mode: 'Markdown',
+          parse_mode: 'HTML',
           reply_markup: { remove_keyboard: true },
         });
         session.linkingBotId = undefined;
@@ -229,6 +229,7 @@ _Error: ${verifyError.message || 'Unknown error'}_
         .update({
           linked_channel_id: chatId,
           linked_channel_username: chatUsername,
+          linked_chat_title: chatTitle,
         })
         .eq('id', linkingBotId);
 
@@ -240,14 +241,14 @@ _Error: ${verifyError.message || 'Unknown error'}_
 
       const emoji = linkingType === 'channel' ? '📢' : '👥';
       await ctx.reply(withFooter(`
-✅ *${linkingType === 'channel' ? 'Channel' : 'Group'} Linked Successfully!*
+✅ <b>${linkingType === 'channel' ? 'Channel' : 'Group'} Linked Successfully!</b>
 
-${emoji} *Name:* ${chatTitle}
-${chatUsername ? `*Username:* @${chatUsername}` : '_No public username_'}
+${emoji} <b>Name:</b> ${escapeHtml(chatTitle)}
+${chatUsername ? `<b>Username:</b> @${chatUsername}` : '<i>No public username</i>'}
 
 Your selling bot will now manage access to this ${linkingType}.
       `), {
-        parse_mode: 'Markdown',
+        parse_mode: 'HTML',
         reply_markup: { remove_keyboard: true },
       });
 
@@ -301,11 +302,11 @@ async function showMyBots(ctx: MainBotContext) {
   keyboard.text('« Back', 'start');
 
   const message = !bots || bots.length === 0
-    ? `🤖 *My Selling Bots*\n\nYou don't have any bots yet.\n\nCreate your first selling bot to start accepting subscribers!`
-    : `🤖 *My Selling Bots (${bots.length})*\n\nSelect a bot to manage:`;
+    ? `🤖 <b>My Selling Bots</b>\n\nYou don't have any bots yet.\n\nCreate your first selling bot to start accepting subscribers!`
+    : `🤖 <b>My Selling Bots (${bots.length})</b>\n\nSelect a bot to manage:`;
 
   await ctx.reply(withFooter(message), {
-    parse_mode: 'Markdown',
+    parse_mode: 'HTML',
     reply_markup: keyboard,
   });
 }
@@ -357,28 +358,30 @@ async function showBotDetails(ctx: MainBotContext, botId: string) {
 
   const linkedInfo = bot.linked_channel_username 
     ? `✅ @${bot.linked_channel_username}` 
-    : bot.linked_channel_id 
-      ? `✅ ID: ${bot.linked_channel_id}` 
-      : '❌ Not linked';
+    : (bot as any).linked_chat_title
+      ? `✅ ${escapeHtml((bot as any).linked_chat_title)}`
+      : bot.linked_channel_id 
+        ? `✅ ID: ${bot.linked_channel_id}` 
+        : '❌ Not linked';
 
   const message = `
-🤖 *Bot: @${escapeMarkdown(bot.bot_username || 'Unknown')}*
+🤖 <b>Bot: @${escapeHtml(bot.bot_username || 'Unknown')}</b>
 
-*Status:* ${bot.status === 'ACTIVE' ? '🟢 Active' : '🔴 Paused'}
-*Name:* ${escapeMarkdown(bot.bot_name || 'Not set')}
+<b>Status:</b> ${bot.status === 'ACTIVE' ? '🟢 Active' : '🔴 Paused'}
+<b>Name:</b> ${escapeHtml(bot.bot_name || 'Not set')}
 
-*Statistics:*
+<b>Statistics:</b>
 • Total Subscribers: ${subscriberCount}
 • Active Subscribers: ${activeSubscribers || 0}
 • Plans: ${planCount}
 
-*Linked Channel/Group:* ${linkedInfo}
+<b>Linked Channel/Group:</b> ${linkedInfo}
 
-*Share Link:* t.me/${escapeMarkdown(bot.bot_username || '')}
+<b>Share Link:</b> <a href="https://t.me/${escapeHtml(bot.bot_username || '')}">t.me/${escapeHtml(bot.bot_username || '')}</a>
 `;
 
   await ctx.reply(withFooter(message), {
-    parse_mode: 'Markdown',
+    parse_mode: 'HTML',
     reply_markup: keyboard,
   });
 }
@@ -403,28 +406,28 @@ async function showBotSubscribers(ctx: MainBotContext, botId: string) {
   if (!subscribers || subscribers.length === 0) {
     keyboard.text('« Back to Bot', `view_bot:${botId}`);
     await ctx.reply(
-      withFooter('👥 *Subscribers*\n\nNo subscribers yet.'),
-      { parse_mode: 'Markdown', reply_markup: keyboard }
+      withFooter('👥 <b>Subscribers</b>\n\nNo subscribers yet.'),
+      { parse_mode: 'HTML', reply_markup: keyboard }
     );
     return;
   }
 
-  let message = '👥 *Subscribers*\n\n';
+  let message = '👥 <b>Subscribers</b>\n\n';
 
   for (const sub of subscribers) {
     const statusEmoji = sub.subscription_status === 'ACTIVE' ? '✅' : '❌';
-    const username = sub.username ? `@${escapeMarkdown(sub.username)}` : escapeMarkdown(sub.first_name || 'Unknown');
+    const username = sub.username ? `@${escapeHtml(sub.username)}` : escapeHtml(sub.first_name || 'Unknown');
     const plan = sub.subscription_plans?.name || 'N/A';
     const expiry = sub.subscription_end_date ? formatDate(new Date(sub.subscription_end_date)) : 'N/A';
 
     message += `${statusEmoji} ${username}\n`;
-    message += `   Plan: ${plan} | Expires: ${expiry}\n\n`;
+    message += `   Plan: ${escapeHtml(plan)} | Expires: ${expiry}\n\n`;
   }
 
   keyboard.text('« Back to Bot', `view_bot:${botId}`);
 
   await ctx.reply(withFooter(message), {
-    parse_mode: 'Markdown',
+    parse_mode: 'HTML',
     reply_markup: keyboard,
   });
 }
@@ -451,19 +454,19 @@ async function showBotPlans(ctx: MainBotContext, botId: string) {
   if (!plans || plans.length === 0) {
     keyboard.text('« Back to Bot', `view_bot:${botId}`);
     await ctx.reply(
-      withFooter('📋 *Subscription Plans*\n\nNo plans created yet.\n\nCreate your first plan to start accepting subscribers!'),
-      { parse_mode: 'Markdown', reply_markup: keyboard }
+      withFooter('📋 <b>Subscription Plans</b>\n\nNo plans created yet.\n\nCreate your first plan to start accepting subscribers!'),
+      { parse_mode: 'HTML', reply_markup: keyboard }
     );
     return;
   }
 
-  let message = '📋 *Subscription Plans*\n\n';
+  let message = '📋 <b>Subscription Plans</b>\n\n';
 
   for (const plan of plans) {
     const status = plan.is_active ? '✅' : '❌';
-    message += `${status} *${plan.name}*\n`;
+    message += `${status} <b>${escapeHtml(plan.name)}</b>\n`;
     message += `   ${formatPrice(plan.price_amount, plan.price_currency)} / ${formatDuration(plan.duration_days)}\n`;
-    if (plan.description) message += `   _${plan.description}_\n`;
+    if (plan.description) message += `   <i>${escapeHtml(plan.description)}</i>\n`;
     message += '\n';
 
     keyboard
@@ -475,7 +478,7 @@ async function showBotPlans(ctx: MainBotContext, botId: string) {
   keyboard.text('« Back to Bot', `view_bot:${botId}`);
 
   await ctx.reply(withFooter(message), {
-    parse_mode: 'Markdown',
+    parse_mode: 'HTML',
     reply_markup: keyboard,
   });
 }
@@ -553,13 +556,13 @@ async function showDeletePlanConfirm(ctx: MainBotContext, planId: string) {
     .text('❌ Cancel', `bot_plans:${plan.bot_id}`);
 
   await ctx.reply(withFooter(`
-⚠️ *Delete Plan*
+⚠️ <b>Delete Plan</b>
 
-Are you sure you want to delete "${plan.name}"?
+Are you sure you want to delete "<b>${escapeHtml(plan.name)}</b>"?
 
 This cannot be undone. Existing subscribers will keep their subscriptions, but no new subscribers can select this plan.
   `), {
-    parse_mode: 'Markdown',
+    parse_mode: 'HTML',
     reply_markup: keyboard,
   });
 }
