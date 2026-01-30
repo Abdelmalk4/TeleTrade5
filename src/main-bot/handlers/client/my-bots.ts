@@ -5,7 +5,7 @@
 import { Bot, InlineKeyboard, Keyboard } from 'grammy';
 import type { MainBotContext } from '../../../shared/types/index.js';
 import { supabase, type SellingBot, type Subscriber, type SubscriptionPlan } from '../../../database/index.js';
-import { withFooter, formatDate, formatPrice, formatDuration } from '../../../shared/utils/index.js';
+import { withFooter, formatDate, formatPrice, formatDuration, decrypt } from '../../../shared/utils/index.js';
 import { mainBotLogger as logger } from '../../../shared/utils/index.js';
 import { clientOnly } from '../../middleware/client.js';
 
@@ -177,7 +177,7 @@ Click the button below to select your group.
       // Verify selling bot is admin in the chat and get chat details
       try {
         const { Bot: GrammyBot } = await import('grammy');
-        const tempBot = new GrammyBot(sellingBot.bot_token);
+        const tempBot = new GrammyBot(decrypt(sellingBot.bot_token));
         const botInfo = await tempBot.api.getMe();
         
         // Get chat details using the selling bot (which should be in the chat)
