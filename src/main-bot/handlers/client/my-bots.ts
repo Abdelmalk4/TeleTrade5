@@ -362,7 +362,7 @@ async function showBotDetails(ctx: MainBotContext, botId: string) {
       : '❌ Not linked';
 
   const message = `
-🤖 *Bot: @${escapeMarkdown(bot.bot_username)}*
+🤖 *Bot: @${escapeMarkdown(bot.bot_username || 'Unknown')}*
 
 *Status:* ${bot.status === 'ACTIVE' ? '🟢 Active' : '🔴 Paused'}
 *Name:* ${escapeMarkdown(bot.bot_name || 'Not set')}
@@ -374,7 +374,7 @@ async function showBotDetails(ctx: MainBotContext, botId: string) {
 
 *Linked Channel/Group:* ${linkedInfo}
 
-*Share Link:* t.me/${escapeMarkdown(bot.bot_username)}
+*Share Link:* t.me/${escapeMarkdown(bot.bot_username || '')}
 `;
 
   await ctx.reply(withFooter(message), {
