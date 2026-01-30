@@ -17,6 +17,16 @@ import { safeSendMessage } from '../../shared/integrations/telegram.js';
 import { formatDate } from '../../shared/utils/date.js';
 import { withFooter } from '../../shared/utils/format.js';
 
+// Single bot instance to avoid creating multiple instances
+let mainBotInstance: Bot | null = null;
+
+function getMainBot(): Bot {
+  if (!mainBotInstance) {
+    mainBotInstance = new Bot(config.MAIN_BOT_TOKEN);
+  }
+  return mainBotInstance;
+}
+
 export async function runTrialCheck(): Promise<void> {
   try {
     // Process expired trials
@@ -41,7 +51,7 @@ async function processExpiredTrials(): Promise<void> {
 
   logger.info({ count: expired.length }, 'Processing expired trials');
 
-  const mainBot = new Bot(config.MAIN_BOT_TOKEN);
+  const mainBot = getMainBot();
 
   for (const client of expired) {
     try {
@@ -74,7 +84,7 @@ Use /subscription to view available plans.
 
 async function sendTrialReminders(): Promise<void> {
   const reminderDays = [5, 3, 1]; // Trial reminders
-  const mainBot = new Bot(config.MAIN_BOT_TOKEN);
+  const mainBot = getMainBot();
   let totalSent = 0;
 
   for (const days of reminderDays) {

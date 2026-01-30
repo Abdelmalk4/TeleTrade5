@@ -5,6 +5,7 @@
 
 import { Bot, session } from 'grammy';
 import { conversations } from '@grammyjs/conversations';
+import { limit } from '@grammyjs/ratelimiter';
 import { sellingBotLogger as logger, decrypt } from '../shared/utils/index.js';
 import type { SellingBotContext, SellingBotSessionData } from '../shared/types/index.js';
 import { supabase, type SellingBot, type Client } from '../database/index.js';
@@ -41,6 +42,16 @@ export function createSellingBot(botToken: string, botId: string): Bot<SellingBo
 
   bot.use(session({ initial: initialSession }));
   bot.use(conversations());
+
+  // Rate limiting - prevent spam
+  bot.use(limit({
+    timeFrame: 2000, // 2 seconds
+    limit: 3, // 3 messages per timeFrame per user
+    onLimitExceeded: async (ctx) => {
+      await ctx.reply('⚠️ Too many requests. Please slow down.');
+    },
+    keyGenerator: (ctx) => ctx.from?.id.toString() ?? 'unknown',
+  }));
 
   // Middleware
   bot.use(setupBotConfigMiddleware(botId));

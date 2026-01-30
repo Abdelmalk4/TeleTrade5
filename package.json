@@ -20,8 +20,10 @@
     },
     "dependencies": {
         "@fastify/cors": "^9.0.0",
+        "@fastify/rate-limit": "^10.3.0",
         "@grammyjs/conversations": "^1.2.0",
         "@grammyjs/menu": "^1.2.1",
+        "@grammyjs/ratelimiter": "^1.2.1",
         "@grammyjs/runner": "^2.0.3",
         "@supabase/supabase-js": "^2.39.0",
         "dotenv": "^16.4.0",

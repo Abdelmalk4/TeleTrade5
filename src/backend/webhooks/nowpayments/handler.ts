@@ -56,6 +56,21 @@ export function registerWebhookRoutes(app: FastifyInstance) {
       const payload = request.body;
 
       try {
+        // Idempotency check - prevent replay attacks and duplicate processing
+        const { data: existingTx } = await supabase
+          .from('payment_transactions')
+          .select('payment_status')
+          .eq('nowpayments_invoice_id', String(payload.invoice_id))
+          .single();
+
+        // Cast to any to handle missing generated types
+        const txStatus = (existingTx as { payment_status: string } | null)?.payment_status;
+        if (txStatus === 'CONFIRMED') {
+          logger.info({ invoiceId: payload.invoice_id }, 'Payment already confirmed, skipping');
+          return reply.status(200).send({ status: 'already_processed' });
+        }
+
+
         // Atomic Processing via RPC
         // Use any cast to bypass strict RPC typing since generated types are missing
         const { data: result, error } = await (supabase.rpc as any)('process_payment_webhook', {

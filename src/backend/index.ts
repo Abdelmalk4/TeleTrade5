@@ -5,7 +5,8 @@
 
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import { config, isDevelopment } from '../shared/config/index.js';
+import rateLimit from '@fastify/rate-limit';
+import { config, isDevelopment, isProduction } from '../shared/config/index.js';
 import { createLogger } from '../shared/utils/logger.js';
 
 // Import routes
@@ -17,7 +18,6 @@ import { startScheduledJobs } from './jobs/index.js';
 
 const logger = createLogger('backend');
 
-
 // Import auth middleware
 import { authenticateApi } from './middleware/api-auth.js';
 import { supabase } from '../database/index.js';
@@ -27,11 +27,29 @@ const app = Fastify({
   logger: isDevelopment,
 });
 
-// Middleware
+// CORS Configuration
+// Warn if wildcard in production
+if (isProduction && config.ALLOWED_ORIGINS.includes('*')) {
+  logger.warn('CORS wildcard (*) is enabled in production. This is a security risk.');
+}
+
 await app.register(cors, {
    origin: config.ALLOWED_ORIGINS,
    credentials: true,
    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+});
+
+// Rate Limiting - protect against abuse
+await app.register(rateLimit, {
+  max: 100, // 100 requests per minute per IP
+  timeWindow: '1 minute',
+  errorResponseBuilder: (_request, context) => ({
+    error: 'Too Many Requests',
+    message: `Rate limit exceeded. Try again in ${Math.ceil(context.ttl / 1000)} seconds.`,
+    statusCode: 429,
+  }),
+  // Skip rate limiting for webhooks (they have their own validation)
+  allowList: (request) => request.url.startsWith('/webhooks/'),
 });
 
 // Register global auth hook
@@ -62,6 +80,23 @@ app.get('/health', async (request, reply) => {
 // Register routes
 registerWebhookRoutes(app);
 registerApiRoutes(app);
+
+// Graceful shutdown handler
+async function shutdown(signal: string) {
+  logger.info({ signal }, 'Received shutdown signal, closing server...');
+  
+  try {
+    await app.close();
+    logger.info('Server closed gracefully');
+    process.exit(0);
+  } catch (error) {
+    logger.error({ error }, 'Error during shutdown');
+    process.exit(1);
+  }
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 // Start server
 async function start() {

@@ -53,17 +53,18 @@ export async function botCreationConversation(
     return;
   }
 
-  // Check if bot already exists
+  // Check if bot already exists (using username since token is stored encrypted)
   const { data: existingBot } = await supabase
     .from('selling_bots')
     .select('id')
-    .eq('bot_token', botToken)
+    .eq('bot_username', botUsername)
     .single();
 
   if (existingBot) {
     await ctx.reply('❌ This bot is already registered on the platform.');
     return;
   }
+
 
   // Step 2: NOWPayments API Key
   await ctx.reply(
@@ -95,6 +96,27 @@ export async function botCreationConversation(
 
   const walletCtx = await conversation.waitFor('message:text');
   const cryptoWalletAddress = walletCtx.message.text.trim();
+
+  // Basic wallet validation
+  if (cryptoWalletAddress.length < 20 || cryptoWalletAddress.length > 100) {
+    await ctx.reply('❌ Invalid wallet address. Address should be between 20-100 characters.');
+    return;
+  }
+
+  // Common wallet format patterns
+  const walletPatterns = [
+    /^0x[a-fA-F0-9]{40}$/, // ETH/ERC20
+    /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/, // Bitcoin legacy
+    /^bc1[a-zA-HJ-NP-Z0-9]{25,87}$/, // Bitcoin bech32
+    /^T[A-Za-z1-9]{33}$/, // TRON
+    /^[LM][a-km-zA-HJ-NP-Z1-9]{26,33}$/, // Litecoin
+  ];
+
+  const isRecognizedFormat = walletPatterns.some(pattern => pattern.test(cryptoWalletAddress));
+  if (!isRecognizedFormat) {
+    await ctx.reply('⚠️ Wallet format not recognized. Proceeding anyway - NOWPayments will validate during payout.');
+    // Continue - NOWPayments will ultimately validate
+  }
 
   // Step 4: Confirmation
   const keyboard = new InlineKeyboard()
